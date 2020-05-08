@@ -78,8 +78,8 @@ def correl_quantity(name_cat,data,label,formats,
 	if not out_file:
 		out_file = name_cat
 
-	print '#################'
-	print 'MATCHING CATALOGS'
+	print('#################')
+	print('MATCHING CATALOGS')
 	
 	cat = fits.open(name_cat)[1].data
 	x   = cat[cols[0]]
@@ -152,8 +152,8 @@ def correl_quantity_stilts(name_cat,data,label,formats,
 	if not out_file:
 		out_file = name_cat
 
-	print '#################'
-	print 'MATCHING CATALOGS'
+	print('#################')
+	print('MATCHING CATALOGS')
 	
 	cat = fits.open(name_cat)[1].data
 	header = fits.open(name_cat)[1].header
