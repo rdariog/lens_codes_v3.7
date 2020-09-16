@@ -376,7 +376,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 				integral  = integrate.simps(DS_t_off(x)*np.cos(2.*x),x,even='first')
 				gamma_t_off = np.append(gamma_t_off,integral/np.pi)
 				t2 = time.time()
-			 	print('tcos',R,(t2-t1)/60.)
+				print('tcos',R,(t2-t1)/60.)
 
 			if 'xsin' in components:
 				print('computing DS_x_off_sin')
