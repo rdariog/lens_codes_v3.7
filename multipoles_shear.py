@@ -1,5 +1,5 @@
 import sys, os
-sys.path.append('/home/eli/lens_codes_v3.7')
+sys.path.append('/mnt/clemente/lensing/python_codes')
 import numpy as np
 from pylab import *
 from astropy.cosmology import LambdaCDM
@@ -28,7 +28,7 @@ Msun = 1.989e30 # Solar mass (kg)
 def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 					misscentred=False,s_off=0.4,
 					components = ['t0','t','tcos','xsin'],
-					verbose=True):
+					verbose=True,Yanmiss = False):
 
 	'''
 	Equations from van Uitert (vU, arXiv:1610.04226) for the 
@@ -60,6 +60,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 	                'tcos' -> Gt_off_cos
 	                'xsin' -> Gx_off_sin
 	verbose         Print time computing
+	Yanmiss         if True use Eq 4 to model the miss of Yan et al. 2020
 	
 	OUTPUT:
 	output          Dictionary (the shear is scales with the
@@ -225,13 +226,12 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 	#print '##################'
 
 	def P_Roff(Roff):
-		'''
-		F_Eq11
-		
-		'''		
-		return abs((Roff/s_off**2)*np.exp(-0.5*(Roff/s_off)**2))*0.5
-	
-
+		if Yanmiss:
+			Poff = (Roff/s_off**2)*np.exp(-1.*(Roff/s_off))
+		else:
+			# F_Eq11
+			Poff = abs((Roff/s_off**2)*np.exp(-0.5*(Roff/s_off)**2))
+		return Poff
 	
 	def monopole_off(R,theta):
 		'''
@@ -239,7 +239,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 		'''
 		
 		def moff(x):
-			return monopole(np.sqrt(R**2+x**2-2.*x*R*np.cos(theta)))*P_Roff(x)
+			return monopole(np.sqrt(R**2+x**2-2.*x*R*np.cos(theta)))*P_Roff(x)*0.5
 		argumento = lambda x: moff(x)
 		# integral1  = integrate.quad(argumento, -1.*np.inf, 0, epsabs=1.e-01, epsrel=1.e-01)[0]
 		integral1  = integrate.quad(argumento, -1.*np.inf, -100., epsabs=1.e-01, epsrel=1.e-01)[0]
@@ -277,7 +277,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 			integral  = integrate.simps(monopole(np.sqrt(R**2+Rs**2-2.*Rs*R*np.cos(x))),x,even='first')
 			return integral/(2.*np.pi)
 
-		argumento = lambda x: DS_RRs(x,R)*P_Roff(x)*2.
+		argumento = lambda x: DS_RRs(x,R)*P_Roff(x)
 		integral  = integrate.quad(argumento, 0, np.inf, epsabs=1.e-02, epsrel=1.e-02)[0]
 		return integral
 
@@ -297,7 +297,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 	def quadrupole_off(R,theta):
 		def q_off(roff):
 			rp = np.sqrt(R**2+roff**2-2*roff*R*np.cos(theta))
-			return quadrupole(rp)*P_Roff(roff)
+			return quadrupole(rp)*P_Roff(roff)*0.5
 		argumento = lambda x: q_off(x)
 		# integral10  = integrate.quad(argumento, -1.*np.inf, 0, epsabs=1.e-01, epsrel=1.e-01)[0]
 		integral10  = integrate.quad(argumento, -1.*np.inf, -100., epsabs=1.e-01, epsrel=1.e-01)[0]
@@ -376,8 +376,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 				integral  = integrate.simps(DS_t_off(x)*np.cos(2.*x),x,even='first')
 				gamma_t_off = np.append(gamma_t_off,integral/np.pi)
 				t2 = time.time()
-				print('tcos',R,((t2-t1)/60.))
-			 	
+			 	print('tcos',R,(t2-t1)/60.)
 
 			if 'xsin' in components:
 				print('computing DS_x_off_sin')
@@ -390,9 +389,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 				integral  = integrate.quad(argumento, 0, 2.*np.pi,points=[np.pi], epsabs=1.e-01, epsrel=1.e-01)[0]
 				gamma_x_off = np.append(gamma_x_off,integral/np.pi)	
 				t2 = time.time()
-				print('xsin',R,(t2-t1)/60.)			 	
-
-
+				print('xsin',R,(t2-t1)/60.)
 					
 		return gamma_t0_off, gamma_t_off0, gamma_t_off, gamma_x_off
 		
@@ -406,7 +403,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 	gt2 = ellip*((-6*p2/r**2) - 2.*m + q)
 	gx2 = ellip*((-6*p2/r**2) - 4.*m)
 	
-	output = {'S0':m,'S2':q,'Gt0':gt0,'Gt2':gt2,'Gx2':gx2}
+	output = {'Gt0':gt0,'Gt2':gt2,'Gx2':gx2}
 	
 	if misscentred:
 		gt0_off, gt_off0, gt_off, gx_off = quantities_misscentred(r)	
@@ -424,7 +421,7 @@ def multipole_shear_unpack(minput):
 def multipole_shear_parallel(r,M200=1.e14,ellip=0.25,z=0.2,
 							 h=0.7,misscentred=False,
 							 s_off=0.4,components = ['t0','t','tcos','xsin'],
-							 verbose = True, ncores=2):
+							 verbose = True, Yanmiss = False, ncores=2):
 	
 	if ncores > len(r):
 		ncores = len(r)
@@ -445,8 +442,9 @@ def multipole_shear_parallel(r,M200=1.e14,ellip=0.25,z=0.2,
 	s_off = np.ones(ncores)*s_off
 	comp  = [components]*ncores
 	v  = np.ones(ncores,dtype=bool)*verbose
+	y  = np.ones(ncores,dtype=bool)*Yanmiss
 	
-	entrada = np.array([r_splitted,M200,ellip,z,h,miss,s_off,comp,v]).T
+	entrada = np.array([r_splitted,M200,ellip,z,h,miss,s_off,comp,v,y]).T
 	
 	pool = Pool(processes=(ncores))
 	salida=np.array(pool.map(multipole_shear_unpack, entrada))
@@ -498,267 +496,3 @@ def model_Gamma(multipole_out,component = 't', misscentred = False, pcc = 0.8):
 			G = multipole_out['Gx2'] 
 			
 	return G
-
-'''
-def multipole_clampitt(r,M200=1.e14,z=0.2,zs=0.35,
-					   h=0.7,misscentred=False,s_off=0.4):
-
-	cosmo = LambdaCDM(H0=h*100, Om0=0.3, Ode0=0.7)
-	H        = cosmo.H(z).value/(1.0e3*pc) #H at z_pair s-1 
-	roc      = (3.0*(H**2.0))/(8.0*np.pi*G) #critical density at z_pair (kg.m-3)
-	roc_mpc  = roc*((pc*1.0e6)**3.0)
-	
-	
-	R200 = r200_nfw(M200,roc_mpc)
-	
-	s_off = s_off/h	
-	
-	############  COMPUTING S_crit
-	
-	Dl    = cosmo.angular_diameter_distance(z).value*1.e6*pc
-	Ds    = cosmo.angular_diameter_distance(zs).value*1.e6*pc
-	Dls   = cosmo.angular_diameter_distance_z1z2(z,zs).value*1.e6*pc
-	
-	Sc = ((((cvel**2.0)/(4.0*np.pi*G*Dl))*(1./(Dls/Ds)))*(pc**2/Msun))
-	sigma_c = np.zeros(len(r))
-	sigma_c.fill(Sc)
-
-
-	#print '##################'
-	#print '      CENTRED     '
-	#print '##################'
-	
-	def Delta_Sigma(R):
-		
-		#calculo de c usando la relacion de Duffy et al 2008
-		
-		M=((800.0*np.pi*roc_mpc*(R200**3))/(3.0*Msun))*h
-		c=5.71*((M/2.e12)**-0.084)*((1.+z)**-0.47)
-		# c = 5.0
-		####################################################
-		
-		deltac=(200./3.)*( (c**3) / ( np.log(1.+c)- (c/(1+c)) ))
-		x=(R*c)/R200
-		m1= x< 1.0
-		m2= x> 1.0 
-		m3= (x == 1.0)
-		
-		try: 
-			jota=np.zeros(len(x))
-			atanh=np.arctanh(((1.0-x[m1])/(1.0+x[m1]))**0.5)
-			jota[m1]=(4.0*atanh)/((x[m1]**2.0)*((1.0-x[m1]**2.0)**0.5)) \
-				+ (2.0*np.log(x[m1]/2.0))/(x[m1]**2.0) - 1.0/(x[m1]**2.0-1.0) \
-				+ (2.0*atanh)/((x[m1]**2.0-1.0)*((1.0-x[m1]**2.0)**0.5))    
-			atan=np.arctan(((x[m2]-1.0)/(1.0+x[m2]))**0.5)
-			jota[m2]=(4.0*atan)/((x[m2]**2.0)*((x[m2]**2.0-1.0)**0.5)) \
-				+ (2.0*np.log(x[m2]/2.0))/(x[m2]**2.0) - 1.0/(x[m2]**2.0-1.0) \
-				+ (2.0*atan)/((x[m2]**2.0-1.0)**1.5)
-			jota[m3]=2.0*np.log(0.5)+5.0/3.0
-		except:
-			if m1:
-				atanh=np.arctanh(((1.0-x[m1])/(1.0+x[m1]))**0.5)
-				jota = (4.0*atanh)/((x[m1]**2.0)*((1.0-x[m1]**2.0)**0.5)) \
-					+ (2.0*np.log(x[m1]/2.0))/(x[m1]**2.0) - 1.0/(x[m1]**2.0-1.0) \
-					+ (2.0*atanh)/((x[m1]**2.0-1.0)*((1.0-x[m1]**2.0)**0.5))   
-			if m2:		 
-				atan=np.arctan(((x[m2]-1.0)/(1.0+x[m2]))**0.5)
-				jota = (4.0*atan)/((x[m2]**2.0)*((x[m2]**2.0-1.0)**0.5)) \
-					+ (2.0*np.log(x[m2]/2.0))/(x[m2]**2.0) - 1.0/(x[m2]**2.0-1.0) \
-					+ (2.0*atan)/((x[m2]**2.0-1.0)**1.5)
-			if m3:
-				jota = 2.0*np.log(0.5)+5.0/3.0
-	
-	
-			
-		rs_m=(R200*1.e6*pc)/c
-		kapak=((2.*rs_m*deltac*roc_mpc)*(pc**2/Msun))/((pc*1.0e6)**3.0)
-		return kapak*jota
-	
-	
-	def monopole(R):
-		
-		if not isinstance(R, (np.ndarray)):
-			R = np.array([R])
-		
-		# m = R == 0.
-		# R[m] = 1.e-8
-		
-		#calculo de c usando la relacion de Duffy et al 2008
-		
-		M=((800.0*np.pi*roc_mpc*(R200**3))/(3.0*Msun))*h
-		c=5.71*((M/2.e12)**-0.084)*((1.+z)**-0.47)
-		# c = 5.0
-		####################################################
-		
-		deltac=(200./3.)*( (c**3) / ( np.log(1.+c)- (c/(1+c)) ))
-		x=(R*c)/R200
-		m1= x< 1.0
-		m2= x> 1.0 
-		m3= (x == 1.0)
-	
-		jota  = np.zeros(len(x))
-		atanh = np.arctanh(np.sqrt((1.0-x[m1])/(1.0+x[m1])))
-		jota[m1] = (1./(x[m1]**2-1.))*(1.-(2./np.sqrt(1.-x[m1]**2))*atanh) 
-	
-		atan = np.arctan(((x[m2]-1.0)/(1.0+x[m2]))**0.5)
-		jota[m2] = (1./(x[m2]**2-1.))*(1.-(2./np.sqrt(x[m2]**2 - 1.))*atan) 
-	
-		jota[m3] = 1./3.
-					
-		rs_m=(R200*1.e6*pc)/c
-		kapak=((2.*rs_m*deltac*roc_mpc)*(pc**2/Msun))/((pc*1.0e6)**3.0)
-		return kapak*jota
-
-	def quadrupole(R):
-		m0p = derivative(monopole,R,dx=1e-6)
-		return m0p*R
-	
-	def I1(R):
-		argumento = lambda x: (x**3)*quadrupole(x)
-		integral = integrate.quad(argumento, 0, R)[0]
-		return integral*(3./(R**4))
-	
-	def I2(R):	
-		argumento = lambda x: (quadrupole(x)/x)
-		integral = integrate.quad(argumento, R, np.inf)[0]
-		return integral
-	
-	vecI1 = np.vectorize(I1)
-	vecI2 = np.vectorize(I2)
-	
-		
-	#print '##################'
-	#print '    MISCENTRED    '
-	#print '##################'
-
-	def P_Roff(Roff):
-		return abs((Roff/s_off**2)*np.exp(-0.5*(Roff/s_off)**2))
-	
-	def monopole_off(R,theta):
-		argumento = lambda x: monopole(R**2+x**2-2*x*R*np.cos(theta))*P_Roff(x)
-		integral1  = integrate.quad(argumento, -1.*np.inf, R)[0]
-		integral2  = integrate.quad(argumento, 0., R)[0]
-		integral3  = integrate.quad(argumento, R, np.inf)[0]
-		return integral1 + integral2 + integral3
-	vec_moff = np.vectorize(monopole_off)
-	
-	def Delta_Sigma_off(R,theta):
-		argumento = lambda x: monopole_off(x,theta)*x
-		integral  = integrate.quad(argumento, 0, R)[0]
-		DS_off    = (2./R**2)*integral - monopole_off(x,theta)
-	vec_DSoff = np.vectorize(Delta_Sigma_off)
-	
-	def quadrupole_off(R,theta):
-		def roff(x,R,theta):
-			return np.round(R**2+x**2-2*x*R*np.cos(theta),6)
-		def qoff(x,R,theta):
-			return quadrupole(roff(x,R,theta))*P_Roff(x)
-		argumento = lambda x: qoff(x,R,theta)
-		integral1  = integrate.quad(argumento, -1.*np.inf, 0)[0]
-		integral2  = integrate.quad(argumento, 0., R)[0]
-		integral3  = integrate.quad(argumento, R, np.inf)[0]
-		return integral1 + integral2 + integral3	
-	vec_qoff = np.vectorize(quadrupole_off)
-	
-	
-	def I1_off(R,theta):
-		if theta != 0. and theta != np.pi:
-			argumento = lambda x: (x**3)*quadrupole_off(x,theta)
-			integral = integrate.quad(argumento, 0, R)[0]
-			return integral*(3./(R**4))
-		else:
-			return 0.
-		
-	def I2_off(R,theta):	
-		if theta != 0. and theta != np.pi:
-			argumento = lambda x: quadrupole_off(x,theta)/x
-			integral = integrate.quad(argumento, R, np.inf)[0]
-			return integral
-		else:
-			return 0.
-	vecI1_off = np.vectorize(I1_off)		
-	vecI2_off = np.vectorize(I2_off)
-			
-
-	def quantities_centred(r):
-		
-		# optimize using unique r
-		r,c = np.unique(r,return_counts=True)
-		
-		monopole_r = monopole(r)
-		quadrupole_r = quadrupole(r)
-		print 'computing I1 centred'	
-		I1r = vecI1(r)
-		print 'computing I2 centred'	
-		I2r = vecI2(r)
-		
-		monopole_r   = np.repeat(monopole_r,c)
-		quadrupole_r = np.repeat(quadrupole_r,c)
-		I1r          = np.repeat(I1r,c)
-		I2r          = np.repeat(I2r,c)
-		
-		return monopole_r,quadrupole_r,I1r,I2r
-		
-	def quantities_misscentred(r,theta):
-		print 'computing monopole misscentred'	
-		monopole_off_r = vec_moff(r,theta) 
-		print 'computing quadrupole misscentred'	
-		quadrupole_off_r = vec_qoff(r,theta)
-		print 'computing I1 misscentred'	
-		I1r_off = vecI1_off(r,theta)
-		print 'computing I2 misscentred'	
-		I2r_off = vecI2_off(r,theta)
-		return monopole_off_r,quadrupole_off_r,I1r_off,I2r_off
-	
-	if misscentred:
-		m,q,I1r,I2r = quantities_misscentred(r,theta)
-	else:
-		m,q,I1r,I2r = quantities_centred(r)
-	
-	output = {'monopole':m,'quadrupole':q,'I1':I1r,'I2':I2r}
-		
-	return output
-	
-	def monopole_off(R,theta):
-		
-		F_Eq12
-		
-			
-		try:		
-			integral = []
-			
-			for r in R:
-	
-				def moff(x):
-					return monopole(np.sqrt(r**2+x**2-2.*x*r*np.cos(theta)))*P_Roff(x)
-				argumento = lambda x: moff(x)
-	
-				integral1  = integrate.quad(argumento, -1.*np.inf, 0, epsabs=1.e-01, epsrel=1.e-01)[0]
-				integral2  = integrate.quad(argumento, 0., r, epsabs=1.e-01, epsrel=1.e-01)[0]
-				integral3  = integrate.quad(argumento, r, np.inf, epsabs=1.e-01, epsrel=1.e-01)[0]
-				integral   = np.append(integral,integral1 + integral2 + integral3)
-		except:
-			
-			def moff(x):
-				return monopole(np.sqrt(R**2+x**2-2.*x*R*np.cos(theta)))*P_Roff(x)
-			argumento = lambda x: moff(x)
-			integral1  = integrate.quad(argumento, -1.*np.inf, 0, epsabs=1.e-01, epsrel=1.e-01)[0]
-			integral2  = integrate.quad(argumento, 0., R, epsabs=1.e-01, epsrel=1.e-01)[0]
-			integral3  = integrate.quad(argumento, R, np.inf, epsabs=1.e-01, epsrel=1.e-01)[0]
-			integral   = integral1 + integral2 + integral3
-		return integral
-		
-	vec_moff = np.vectorize(monopole_off)
-
-	def Delta_Sigma_off(R,theta):
-		
-		F_Eq14
-		
-								
-		x = np.linspace(0.,R,200)
-		integral  = integrate.simps(monopole_off(x,theta)*x,x,even='first')
-		DS_off    = (2./R**2)*integral - monopole_off(R,theta)
-		return DS_off
-	
-	
-'''
