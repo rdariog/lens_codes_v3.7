@@ -1,4 +1,5 @@
 import sys, os
+sys.path.append('/home/eli/lens_codes_v3.7')
 import numpy as np
 from pylab import *
 from astropy.cosmology import LambdaCDM
@@ -392,54 +393,6 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 				print('xsin',R,(t2-t1)/60.)			 	
 
 
-			'''
-
-			def DS_t_off(theta):
-				gamma_t0 = Delta_Sigma_off(R,theta)
-				gamma_t2 = ((-6*psi2_off(R,theta)/R**2) 
-							- 2.*monopole_off(R,theta) 
-							+ quadrupole_off(R,theta))
-				return gamma_t0 + ellip*gamma_t2*np.cos(2.*theta)
-
-			
-			
-			if 't' in components:
-				print('computing DS_t_off')
-				t1 = time.time()
-				if ellip == 0.:
-					DSoff = Delta_Sigma_off0(R)
-					gamma_t_off0 = np.append(gamma_t_off0,DSoff)
-				else:
-					argumento = lambda x: DS_t_off(x)
-					integral  = integrate.quad(argumento, 0., 2.*np.pi,points=[np.pi], epsabs=1.e-01, epsrel=1.e-01)[0]
-					gamma_t_off0 = np.append(gamma_t_off0,integral/(2.*np.pi))
-				t2 = time.time()
-				print((t2-t1)/60.)
-
-			
-			if 'tcos' in components:	
-				print 'computing DS_t_off_cos'
-				t1 = time.time()
-				argumento = lambda x: DS_t_off(x)*np.cos(2.*x)
-				integral  = integrate.quad(argumento, 0., 2.*np.pi,points=[np.pi], epsabs=1.e-01, epsrel=1.e-01)[0]
-				gamma_t_off = np.append(gamma_t_off,integral/np.pi)
-				t2 = time.time()
-			 	print (t2-t1)/60.
-			 	
-			if 'xsin' in components:
-				print 'computing DS_x_off_sin'
-				t1 = time.time()
-				def DS_x_off(theta):
-					gamma_x2 = ((-6*psi2_off(R,theta)/R**2) 
-								- 4.*monopole_off(R,theta))
-					return ellip*gamma_x2*np.sin(2.*theta)
-				argumento = lambda x: DS_x_off(x)*np.sin(2.*x)
-				integral  = integrate.quad(argumento, 0, 2.*np.pi,points=[np.pi], epsabs=1.e-01, epsrel=1.e-01)[0]
-				gamma_x_off = np.append(gamma_x_off,integral/np.pi)	
-				t2 = time.time()
-				print 'xsin',R,(t2-t1)/60.			 	
-						
-			'''
 					
 		return gamma_t0_off, gamma_t_off0, gamma_t_off, gamma_x_off
 		
@@ -453,7 +406,7 @@ def multipole_shear(r,M200=1.e14,ellip=0.25,z=0.2,h=0.7,
 	gt2 = ellip*((-6*p2/r**2) - 2.*m + q)
 	gx2 = ellip*((-6*p2/r**2) - 4.*m)
 	
-	output = {'Gt0':gt0,'Gt2':gt2,'Gx2':gx2}
+	output = {'S0':m,'S2':q,'Gt0':gt0,'Gt2':gt2,'Gx2':gx2}
 	
 	if misscentred:
 		gt0_off, gt_off0, gt_off, gx_off = quantities_misscentred(r)	

@@ -148,7 +148,7 @@ def NFW_stack_fit(R,D_Sigma,err,z,roc,fitc = False, h = 0.7):
 	roc_mpc=roc*((pc*1.0e6)**3.0)
 
 	if fitc:
-		NFW_out = curve_fit(NFW_profile_sigma_c,(R, roc_mpc,z),D_Sigma,sigma=err,absolute_sigma=True)
+		NFW_out = curve_fit(NFW_profile_sigma_c,(R, np.ones(len(R))*roc_mpc,np.ones(len(R))*z),D_Sigma,sigma=err,absolute_sigma=True)
 		pcov    = NFW_out[1]
 		perr    = np.sqrt(np.diag(pcov))
 		e_R200  = perr[0]
@@ -162,7 +162,7 @@ def NFW_stack_fit(R,D_Sigma,err,z,roc,fitc = False, h = 0.7):
 		yplot   = NFW_profile_sigma_c((xplot,roc_mpc,z),R200,c)
 
 	else:
-		NFW_out = curve_fit(NFW_profile_sigma,(R, roc_mpc,z,h),D_Sigma,sigma=err,absolute_sigma=True)
+		NFW_out = curve_fit(NFW_profile_sigma,(R, np.ones(len(R))*roc_mpc,np.ones(len(R))*z,np.ones(len(R))*h),D_Sigma,sigma=err,absolute_sigma=True)
 		e_R200  = np.sqrt(NFW_out[1][0][0])
 		R200    = NFW_out[0][0]
 		
