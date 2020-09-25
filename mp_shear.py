@@ -9,7 +9,8 @@ from astropy.cosmology import LambdaCDM
 # from scipy import integrate
 import profiles_fit
 
-class mp_shear:
+
+class MPShear:
     """
     Equations from van Uitert (vU, arXiv:1610.04226) for the
     multipole expansion and from Ford et al. (F,2015) for
@@ -66,8 +67,8 @@ class mp_shear:
 
     def __init__(self, r, M200=1.e14, ellip=0.25, z=0.2, h=0.7,
                         misscentred=False, s_off=0.4,
-                        components = ['t0', 't', 'tcos', 'xsin'],
-                        verbose=True, Yanmiss = False):
+                        components=['t0', 't', 'tcos', 'xsin'],
+                        verbose=True, Yanmiss=False):
         """
         init method, it sets up all variables
         """
@@ -87,9 +88,11 @@ class mp_shear:
         self.Yanmiss     = Yanmiss
 
         # Compute cosmological parameters
-        self.cosmo    = LambdaCDM(H0=self.h*100, Om0=0.3, Ode0=0.7)
-        self.H        = self.cosmo.H(self.z).value / (1.0e3 * self.pc) #H at z_pair s-1
-        self.roc      = (3.0 * (self.H**2.0)) / (8.0*np.pi * self.G) #critical density at z_pair (kg.m-3)
+        self.cosmo    = LambdaCDM(H0=self.h * 100, Om0=0.3, Ode0=0.7)
+        # H at z_pair s-1
+        self.H        = self.cosmo.H(self.z).value / (1.0e3 * self.pc)
+        # critical density at z_pair (kg.m-3)
+        self.roc      = (3.0 * (self.H**2.0)) / (8.0 * np.pi * self.G)
         self.roc_mpc  = self.roc * ((self.pc * 1.0e6)**3.0)
 
         # Compute R_200
